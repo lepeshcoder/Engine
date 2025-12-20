@@ -3,9 +3,6 @@
 //
 #include "SlidingPieces.h"
 
-
-
-
 Bitboard::Bitboard SlidingPieces::GetBishopMoves(int bishop, Bitboard::Bitboard blockers) {
     Bitboard::Bitboard moves = Bitboard::ZERO;
 

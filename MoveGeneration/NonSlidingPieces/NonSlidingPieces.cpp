@@ -18,11 +18,11 @@ Bitboard::Bitboard NonSlidingPieces::GetPawnAttacks(Bitboard::Bitboard pawns, Pi
 
 Bitboard::Bitboard NonSlidingPieces::GetPawnMoves(Bitboard::Bitboard pawns, PieceColor color) {
     switch (color) {
-        case PieceColor::WHITE: {
+        case WHITE: {
             return pawns << 8 |
                 (pawns & Bitboard::RANK_2) << 16;
         }
-        case PieceColor::BLACK: {
+        case BLACK: {
             return pawns >> 8 |
                 (pawns & Bitboard::RANK_7) >> 16;
         }

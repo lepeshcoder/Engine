@@ -19,6 +19,13 @@ add_executable(Engine main.cpp
         MoveGeneration/Cache/Cache.h
         Utils/Timer/Timer.cpp
         Utils/Timer/Timer.h
+        Move/Move.cpp
+        Move/Move.h
+        MoveGeneration/Generators/IGenerator/IGenerator.h
+        MoveGeneration/Generators/LegalGenerator/LegalGenerator.cpp
+        MoveGeneration/Generators/LegalGenerator/LegalGenerator.h
+        Utils/Perft/Perft.cpp
+        Utils/Perft/Perft.h
 )
 
 target_compile_options(Engine PRIVATE -mbmi2)

@@ -14,56 +14,46 @@ class Cache {
 
 public:
 
-    Cache();
-    ~Cache();
+    static void InitCache();
+    static void ClearCache();
 
-    Bitboard::Bitboard GetBishopMoves(int sq, Bitboard::Bitboard blockers);
-    Bitboard::Bitboard GetRookMoves(int sq, Bitboard::Bitboard blockers);
-    Bitboard::Bitboard GetQueenMoves(int sq, Bitboard::Bitboard blockers);
+    static Bitboard::Bitboard GetBishopMoves(int sq, Bitboard::Bitboard blockers);
+    static Bitboard::Bitboard GetRookMoves(int sq, Bitboard::Bitboard blockers);
+    static Bitboard::Bitboard GetQueenMoves(int sq, Bitboard::Bitboard blockers);
 
-    Bitboard::Bitboard GetKingMoves(int sq);
-    Bitboard::Bitboard GetKnightMoves(int sq);
+    static Bitboard::Bitboard GetKingMoves(int sq);
+    static Bitboard::Bitboard GetKnightMoves(int sq);
+    static Bitboard::Bitboard GetPawnMoves(int color, int sq, Bitboard::Bitboard blockers);
+    static Bitboard::Bitboard GetPawnAttacks(int color, int sq);
+    static Bitboard::Bitboard GetSlidingPieceAttacks(int pieceType,int sq,Bitboard::Bitboard blockers);
 
 
 private:
-     void InitCache();
-     void InitMasks();
 
-     void InitBishopCache();
-     void InitRookCache();
-     void InitKingCache();
-     void InitKnightCache();
+     static void InitMasks();
 
-     Bitboard::Bitboard* RookCache[64];
-     Bitboard::Bitboard* BishopCache[64];
-     Bitboard::Bitboard KingCache[64];
-     Bitboard::Bitboard KnightCache[64];
+     static void InitBishopCache();
+     static void InitRookCache();
+     static void InitKingCache();
+     static void InitKnightCache();
+     static void InitPawnCache();
+
+     static Bitboard::Bitboard* RookCache[64];
+     static Bitboard::Bitboard* BishopCache[64];
+     static Bitboard::Bitboard KingCache[64];
+     static Bitboard::Bitboard KnightCache[64];
+
+     static Bitboard::Bitboard* PawnMoveCache[2][64];
+     static Bitboard::Bitboard PawnAttackCache[2][64];
+
+     static Bitboard::Bitboard RookMasks[64];
+     static Bitboard::Bitboard BishopMasks[64];
+     static Bitboard::Bitboard PawnMoveMasks[2][64];
 
 
-     Bitboard::Bitboard RookMasks[64] = {};
-     Bitboard::Bitboard BishopMasks[64] = {};
 
-     int RookBits[64] = {
-        12,11,11,11,11,11,11,12,
-        11,10,10,10,10,10,10,11,
-        11,10,10,10,10,10,10,11,
-        11,10,10,10,10,10,10,11,
-        11,10,10,10,10,10,10,11,
-        11,10,10,10,10,10,10,11,
-        11,10,10,10,10,10,10,11,
-        12,11,11,11,11,11,11,12,
-    };
-
-    int BishopBits[64] = {
-        6, 5, 5, 5, 5, 5, 5, 6,
-        5, 5, 5, 5, 5, 5, 5, 5,
-        5, 5, 7, 7, 7, 7, 5, 5,
-        5, 5, 7, 9, 9, 7, 5, 5,
-        5, 5, 7, 9, 9, 7, 5, 5,
-        5, 5, 7, 7, 7, 7, 5, 5,
-        5, 5, 5, 5, 5, 5, 5, 5,
-        6, 5, 5, 5, 5, 5, 5, 6
-    };
+     static int RookBits[64];
+     static int BishopBits[64];
 
 };
 
