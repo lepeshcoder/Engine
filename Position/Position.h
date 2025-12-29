@@ -11,51 +11,61 @@
 #include <sstream>
 #include"../Move/Move.h"
 #include "../MoveGeneration/Cache/Cache.h"
+#include <cassert> 
+#include<iostream>
 
-struct UndoInfo {
-    int8_t castleRights;
-    int8_t fiftyMovesCounter;
-    int8_t enPassantField;
+
+ constexpr int MAX_PLY = 256;
+ constexpr int8_t WK = 1;
+ constexpr int8_t WQ = 2;
+ constexpr int8_t BK = 4;
+ constexpr int8_t BQ = 8;
+
+ constexpr int8_t castlingMasks[64] = {
+    WK,0,0,WK | WQ,0,0,0,WQ,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    BK,0,0,BK | BQ,0,0,0,BQ,
 };
+
+struct PositionInfo {
+
+    PositionInfo()
+    {
+        std::memset(this,0,sizeof(PositionInfo));
+    }
+    //Field that copied when makemove
+    Bitboard::Bitboard allPiecesByColor[2]; 
+    Bitboard::Bitboard allPieces;
+    int8_t castleRights;  
+    int8_t FiftyMovesCounter;
+    int8_t EnPassantField; 
+   
+    // FIELDS THAT DONT COPY WHEN MAKEMOVE BEACUSE RECALCULATED
+    Bitboard::Bitboard CheckSquares[6]; // array of Bitboards that represent from what square [pieceType] can do a check
+    Bitboard::Bitboard Checkers;  // bitboard that represent pieces that gives check in position
+    Bitboard::Bitboard Pinners[2]; // bitboard that represent [color] pieces that pins [~color] pieces
+    Bitboard::Bitboard KingBlockers[2]; // bitboard that represent pieces that are  blocks [color] king from [~color] pinners
+    PositionInfo *next , *previous;
+};
+
+
 
 class Position {
 private:
+    // fields that not restore in UnmakeMove from PositionInfo struct
+    Bitboard::Bitboard Pieces[2][6]{Bitboard::ZERO};     // stores bitbord representation of position for every color and piecetype
+    int8_t Types[64]{ NONE }; // stores info about what piece type on this square
+    PieceColor CurrentColor = WHITE;  
+    int PlyFromNull = 0;
+    int8_t kingsSq[2]{ 0 };
 
-    Bitboard::Bitboard Pieces[2][6]{};     // stores bitbord representation of position for every color and piecetype
+    PositionInfo* info;
 
-    int Types[64]{NONE}; // stores info about what piece type on this square
-
-    int kingsSq[2];
-    int8_t castleRights = 0;
-
-    Bitboard::Bitboard allPiecesByColor[2]{Bitboard::ZERO};
-    Bitboard::Bitboard allPieces = Bitboard::ZERO;
-
-    PieceColor CurrentColor;
-
-    int MoveCounter;
-    int8_t FiftyMovesCounter;
-    int8_t EnPassantField;
-
-    static constexpr int MAX_PLY = 256;
-    UndoInfo undoStack[MAX_PLY];
-    int currentPly = 0;
-
-    static constexpr int8_t WK = 1;
-    static constexpr int8_t WQ = 2;
-    static constexpr int8_t BK = 4;
-    static constexpr int8_t BQ = 8;
-
-    static constexpr int8_t castlingMasks[64] = {
-        WK,0,0,WK|WQ,0,0,0,WQ,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        BK,0,0,BK|BQ,0,0,0,BQ,
-    };
     #pragma region PrivateMethods
     // for makeMove
     void MakeShortCastleMove(const Move::Move& move);
@@ -77,47 +87,84 @@ private:
     void UnMakeCapturePromotionMove(const Move::Move& move);
     void UnMakeQuietMove(const Move::Move& move);
 
+    // checking
+    void SetCheckSquares();
+    void SetBlockersPinners(uint32_t color);
+    void SetCheckers();
+
+    // allPeaces of color that attacks sq
+    Bitboard::Bitboard AttackersTo(uint32_t attackerColor, int sq);
+
     // for undoInfoStack
-    void PushUndoInfo();
-    UndoInfo& PopUndoInfo();
+    void PushUndoInfo(PositionInfo* pi);
+    void PopUndoInfo();
 
     #pragma endregion
 
 public:
 
+    Position();
     Position(const std::string &Fen);
 
+    //Operators
+    Position& operator=(const Position& other);
+    bool operator==(const Position& other) const;
+    bool operator!=(const Position& other) const;
+  
+    void SetPosition(const std::string& Fen);
+
     // MAKE/UNMAKE
-    void MakeMove(const Move::Move& move);
+    void MakeMove(const Move::Move& move, PositionInfo* pi);
 
     void UnMakeMove(const Move::Move& move);
 
     // ADDITIONAL
-    bool IsLegal(const Move::Move& move);
+    bool IsCheck();
 
-    bool IsSquareUnderAttack(int sq) const;
+    bool IsLegal(const Move::Move& move) const;
+
+    bool IsSquareUnderAttack(int sq, Bitboard::Bitboard newBlockers = Bitboard::ZERO) const;
+
+    bool IsMoveGivesCheck(const Move::Move& move);
+
+
+
 
     // GETTERS
     PieceColor GetCurrentColor() const { return CurrentColor;}
 
     Bitboard::Bitboard GetPieceBitboard(int color, int pieceType) const { return Pieces[color][pieceType]; }
 
-    Bitboard::Bitboard GetPiecesByColor(int color) const { return allPiecesByColor[color]; }
+    Bitboard::Bitboard GetPiecesByColor(int color) const { return info->allPiecesByColor[color]; }
 
-    Bitboard::Bitboard GetAllPieces() const { return allPieces;}
+    Bitboard::Bitboard GetAllPieces() const { return info->allPieces;}
 
-    int GetPieceTypeBySquare(int sq) const { return Types[sq]; };
+    uint8_t GetPieceTypeBySquare(int sq) const { return Types[sq]; };
 
-    int GetEnPassantField()const { return EnPassantField; }
+    uint8_t GetEnPassantField()const { return this->info->EnPassantField; }
 
-    bool IsShortCastleAvailable(int color) const {return color == WHITE ? castleRights & WK : castleRights & BK;}
+    bool IsShortCastleAvailable(int color) const {return color == WHITE ? info->castleRights & WK : info->castleRights & BK;}
 
-    bool IsLongCastleAvailable(int color) const {return color == WHITE ? castleRights & WQ : castleRights & BQ;}
+    bool IsLongCastleAvailable(int color) const {return color == WHITE ? info->castleRights & WQ : info->castleRights & BQ;}
 
-    int GetKingSq(int color) const;
+    uint8_t GetKingSq(int color) const {return kingsSq[color];}
+
+    Bitboard::Bitboard GetCheckers() const { return info->Checkers; }
+
+    Bitboard::Bitboard GetBlockers() const { return info->KingBlockers[CurrentColor]; }
 
 
+
+    // print pos in console
+    void ShowPos() const;
+
+
+
+    //Constants
+    static constexpr int8_t ShortCastleFieldsByColor[2][3] = {{Bitboard::E1,Bitboard::F1,Bitboard::G1},{Bitboard::E8,Bitboard::F8,Bitboard::G8}};
+    static constexpr int8_t LongCastleFieldsByColor[2][3] = {{Bitboard::E1,Bitboard::D1,Bitboard::C1},{Bitboard::E8,Bitboard::D8,Bitboard::C8}};
 };
+
 
 
 #endif //ENGINE_POSITION_H

@@ -7,40 +7,46 @@
 #include "Utils/Timer/Timer.h"
 
 
+
 int main() {
 
-    Cache::InitCache();
+
+   Cache::InitCache();
+
+ /*  std::string request;
+   
+   while (std::getline(std::cin, request)) {
+       if (request == "isready")
+       {
+            std::cout<<"uciok\n";
+            std::cout.flush();
+       }
+   }*/
+
+
+
+
+    std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    std::string pos1fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
 
     Timer timer;
+    
 
-    Perft perft(5);
-
+    Perft perft(pos1fen,6);
     timer.start();
-    int positions = perft.Execute();
+    perft.ExecuteDivide();
+    //auto perftResult = perft.Execute(false);
     auto duration = timer.stop();
-    std::cout<<"positions: "<<positions <<"\n"<<"time: "<<duration<<" mcs.";
+    std::cout<<"time: "<<duration / 1000 <<" ms.";
+   // perftResult.Show();
 
 
 
 
 
-    // for (int sq = 0; sq < 64; sq++) {
-    //     std::cout<<"sq: "<<sq<<":\n"<<Bitboard::BitboardToString(Bitboard::ONE << sq);
-    //     std::cout<<"attacks To Sq:\n"<<Bitboard::BitboardToString(pos.AttacksTo[sq]);
-    //     std::cout<<"attacks from Sq:\n"<<Bitboard::BitboardToString(pos.AttacksFrom[sq]);
-    // }
-
-    //std::cout<<Bitboard::BitScanForward(pos.GetPieceBitboard(WHITE,QUEEN));
-
-
-    /*
-    std::string request;
-
-    while (std::getline(std::cin, request)) {
-        std::string response(request.rbegin(), request.rend());
-        std::cout << response << std::endl;
-        std::cout.flush();
-    }*/
+  
+    
+   
 
     Cache::ClearCache();
 }

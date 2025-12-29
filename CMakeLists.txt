@@ -21,7 +21,6 @@ add_executable(Engine main.cpp
         Utils/Timer/Timer.h
         Move/Move.cpp
         Move/Move.h
-        MoveGeneration/Generators/IGenerator/IGenerator.h
         MoveGeneration/Generators/LegalGenerator/LegalGenerator.cpp
         MoveGeneration/Generators/LegalGenerator/LegalGenerator.h
         Utils/Perft/Perft.cpp

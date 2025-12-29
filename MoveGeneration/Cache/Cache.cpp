@@ -20,6 +20,10 @@
  Bitboard::Bitboard Cache::BishopMasks[64];
  Bitboard::Bitboard Cache::PawnMoveMasks[2][64];
 
+
+ Bitboard::Bitboard Cache::LineBb[64][64]{Bitboard::ZERO};
+ Bitboard::Bitboard Cache::BetweenBb[64][64]{Bitboard::ZERO};
+
 int Cache::RookBits[64] = {
     12,11,11,11,11,11,11,12,
     11,10,10,10,10,10,10,11,
@@ -49,6 +53,8 @@ void Cache::InitCache() {
     InitKnightCache();
     InitKingCache();
     InitPawnCache();
+    InitLinesBb();
+    InitBetweenBb();
 }
 
 void Cache::ClearCache() {
@@ -156,6 +162,51 @@ void Cache::InitPawnCache() {
     }
 }
 
+void Cache::InitLinesBb()
+{
+    for (int from = 0; from < 64; from++)
+    {
+        for (int to = 0; to < 64; to++)
+        {
+            
+            if(from == to) LineBb[from][to] = Bitboard::sqBb[from];
+            auto toBb = Bitboard::sqBb[to];
+            if (Rays::GetRay(from,Rays::DIRECTION::NORTH) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::NORTH) | Rays::GetRay(from, Rays::DIRECTION::SOUTH);
+            else if (Rays::GetRay(from,Rays::DIRECTION::EAST) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::EAST) | Rays::GetRay(from, Rays::DIRECTION::WEST);
+            else if (Rays::GetRay(from,Rays::DIRECTION::WEST) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::WEST) | Rays::GetRay(from, Rays::DIRECTION::EAST);
+            else if (Rays::GetRay(from,Rays::DIRECTION::SOUTH) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::SOUTH) | Rays::GetRay(from, Rays::DIRECTION::NORTH);
+            else if (Rays::GetRay(from,Rays::DIRECTION::NORTH_EAST) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::NORTH_EAST) | Rays::GetRay(from, Rays::DIRECTION::SOUTH_WEST);
+            else if (Rays::GetRay(from,Rays::DIRECTION::SOUTH_EAST) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::SOUTH_EAST) | Rays::GetRay(from, Rays::DIRECTION::NORTH_WEST);
+            else if (Rays::GetRay(from,Rays::DIRECTION::NORTH_WEST) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::NORTH_WEST) | Rays::GetRay(from, Rays::DIRECTION::SOUTH_EAST);
+            else if (Rays::GetRay(from,Rays::DIRECTION::SOUTH_WEST) & toBb) LineBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::SOUTH_WEST) | Rays::GetRay(from, Rays::DIRECTION::NORTH_EAST);
+            else LineBb[from][to] = Bitboard::ZERO;
+            LineBb[from][to] |= Bitboard::sqBb[from];
+        }
+    }
+}
+
+void Cache::InitBetweenBb()
+{
+    for (int from = 0; from < 64; from++)
+    {
+        for (int to = 0; to < 64; to++)
+        {
+            if (from == to) BetweenBb[from][to] = Bitboard::sqBb[from];
+            auto toBb = Bitboard::sqBb[to];
+            if (Rays::GetRay(from, Rays::DIRECTION::NORTH) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::NORTH) & ~Rays::GetRay(to, Rays::DIRECTION::NORTH);
+            else if (Rays::GetRay(from, Rays::DIRECTION::EAST) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::EAST) & ~Rays::GetRay(to, Rays::DIRECTION::EAST);
+            else if (Rays::GetRay(from, Rays::DIRECTION::WEST) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::WEST) & ~Rays::GetRay(to, Rays::DIRECTION::WEST);
+            else if (Rays::GetRay(from, Rays::DIRECTION::SOUTH) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::SOUTH) & ~Rays::GetRay(to, Rays::DIRECTION::SOUTH);
+            else if (Rays::GetRay(from, Rays::DIRECTION::NORTH_EAST) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::NORTH_EAST) & ~Rays::GetRay(to, Rays::DIRECTION::NORTH_EAST);
+            else if (Rays::GetRay(from, Rays::DIRECTION::SOUTH_EAST) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::SOUTH_EAST) & ~Rays::GetRay(to, Rays::DIRECTION::SOUTH_EAST);
+            else if (Rays::GetRay(from, Rays::DIRECTION::NORTH_WEST) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::NORTH_WEST) & ~Rays::GetRay(to, Rays::DIRECTION::NORTH_WEST);
+            else if (Rays::GetRay(from, Rays::DIRECTION::SOUTH_WEST) & toBb) BetweenBb[from][to] = Rays::GetRay(from, Rays::DIRECTION::SOUTH_WEST) & ~Rays::GetRay(to, Rays::DIRECTION::SOUTH_WEST);          
+            else BetweenBb[from][to] = Bitboard::ZERO;
+            BetweenBb[from][to] &= ~Bitboard::sqBb[to];
+        }
+    }
+}
+
 
 
 Bitboard::Bitboard Cache::GetBishopMoves(int sq, Bitboard::Bitboard blockers) {
@@ -194,6 +245,28 @@ Bitboard::Bitboard Cache::GetSlidingPieceAttacks(int pieceType, int sq, Bitboard
         case BISHOP: return GetBishopMoves(sq,blockers);
         case ROOK: return GetRookMoves(sq,blockers);
         case QUEEN: return GetQueenMoves(sq,blockers);
+    }
+}
+
+Bitboard::Bitboard Cache::GetLineBb(int from, int to)
+{
+    return LineBb[from][to];
+}
+
+Bitboard::Bitboard Cache::GetBetweenBb(int from, int to)
+{
+    return BetweenBb[from][to];
+}
+
+Bitboard::Bitboard Cache::GetPieceMoves(uint32_t pieceType, uint32_t sq, Bitboard::Bitboard blockers)
+{
+    switch (pieceType)
+    {
+        case KING: return GetKingMoves(sq);
+        case QUEEN: return GetQueenMoves(sq,blockers);
+        case ROOK: return GetRookMoves(sq,blockers);
+        case BISHOP: return GetBishopMoves(sq,blockers);
+        case KNIGHT: return GetKnightMoves(sq);
     }
 }
 

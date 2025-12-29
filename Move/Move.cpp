@@ -8,7 +8,7 @@
 #include <istream>
 
 
-std::string Move::Move::sq(int sq) const {
+std::string Move::Move::sq(int sq) {
     const std::string rows[8] = {"1","2","3","4","5","6","7","8"};
     const std::string cols[8] = {"h", "g","f","e","d","c","b","a"};
     return cols[sq % 8] + rows[sq / 8];

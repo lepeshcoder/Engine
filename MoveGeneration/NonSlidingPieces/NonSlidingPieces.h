@@ -17,7 +17,7 @@ namespace NonSlidingPieces {
 
     Bitboard::Bitboard GetKnightMoves(Bitboard::Bitboard knights);
 
-    Bitboard::Bitboard GetKingMoves(Bitboard::Bitboard king);
+    Bitboard::Bitboard GetKingMoves(Bitboard::Bitboard king);   
 }
 
 #endif //ENGINE_NONSLIDINGPIECES_H

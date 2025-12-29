@@ -6,12 +6,11 @@
     #define ENGINE_MOVE_H
 
     #include <cstdint>
-#include <string>
+    #include <string>
+    #include "../Types.h"
 
-#include "../Types.h"
 
-
-    // Format : | 000000  |       000          |       000       |        000        |      0      |      0       |       0       |      0      |     0     | 000000 | 000000 |
+    // Format : | 000000  |        000         |       000       |        000        |      0      |      0       |       0       |      0      |     0     | 000000 | 000000 |
     // Goal     | unused  | promotionPieceType | movingPieceType | capturedPieceType | IsEnPassant | IsLongCastle | IsShortCastle | IsPromotion | IsCapture | FromSq |  ToSq  |
     // Size     |  6 bit  |       3 bit        |      3 bit      |       3 bit       |     1bit    |    1 bit     |     1 bit     |    1 bit    |   1 bit   | 6 bit  | 6 bit  |
     // Offset   | 26 bit  |       23 bit       |     20 bit      |       17 bit      |    16 bit   |    15 bit    |     14 bit    |    13 bit   |   12 bit  | 6 bit  | 0 bit  |
@@ -33,14 +32,17 @@
         enum Flags{ CaptureFlag = 1, PromotionFlag = 1 << 1, ShortCastleFlag = 1 << 2,
             LongCastleFlag = 1 << 3, EnPassantFlag = 1 << 4 };
 
-        class Move {
+        class Move{
         private:
             uint32_t move;
-            std::string sq(int sq) const;
+            
 
         public:
+            Move() = default;
             Move(uint32_t from, uint32_t to, uint32_t flags,
                 uint32_t movingPieceType, uint32_t capturedPieceType, uint32_t promotionPieceType);
+
+            static std::string sq(int sq);
 
             uint32_t getTo() const { return move & SixBitMask; }
             uint32_t getFrom() const { return move >> FromSqShift & SixBitMask; }
@@ -56,8 +58,7 @@
             bool isLongCastle() const { return getFlags() & LongCastleFlag; };
             bool isEnPassant() const { return getFlags() & EnPassantFlag; }
 
-           void ShowMove() const;
-
+            void ShowMove() const;
         };
     }
 

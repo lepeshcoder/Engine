@@ -17,19 +17,27 @@ namespace Bitboard {
     };
 
     // smallest index of set(1) bit
-    inline int BitScanForward(Bitboard bb) {
-        return __builtin_ctzll(bb);
+    inline uint8_t BitScanForward(Bitboard bb) {
+        return _tzcnt_u64(bb);
     }
 
     // largest index of set(1) bit
-    inline int BitScanReverse(Bitboard bb) {
-        return 63 - __builtin_clzll(bb);
+    inline uint8_t BitScanReverse(Bitboard bb) {
+        //return 63 - __builtin_clzll(bb);
+        unsigned long index;
+        _BitScanReverse64(&index, bb);
+        return static_cast<int>(index);
+    }
+
+    inline uint8_t PopCount(Bitboard bb) {
+        return __popcnt64(bb);
     }
 
     std::string BitboardToString(Bitboard bb, BitOrder order = BitOrder::MSB_first);
 
     constexpr Bitboard ZERO = 0ull;
     constexpr Bitboard ONE = 1ull;
+    constexpr Bitboard ALLONE = UINT64_MAX;
 
     constexpr Bitboard RANK_1 = (1ull << 8) - 1;
     constexpr Bitboard RANK_2 = RANK_1 << 8;
@@ -77,7 +85,8 @@ namespace Bitboard {
     };
 
 
-
+    
+    
 }
 
 #endif //ENGINE_BITBOARD_H

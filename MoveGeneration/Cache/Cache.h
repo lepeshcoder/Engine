@@ -26,6 +26,11 @@ public:
     static Bitboard::Bitboard GetPawnMoves(int color, int sq, Bitboard::Bitboard blockers);
     static Bitboard::Bitboard GetPawnAttacks(int color, int sq);
     static Bitboard::Bitboard GetSlidingPieceAttacks(int pieceType,int sq,Bitboard::Bitboard blockers);
+    static Bitboard::Bitboard GetLineBb(int from,int to);
+    static Bitboard::Bitboard GetBetweenBb(int from,int to);
+    static Bitboard::Bitboard GetPieceMoves(uint32_t pieceType,uint32_t sq, Bitboard::Bitboard blockers);
+
+    
 
 
 private:
@@ -37,7 +42,11 @@ private:
      static void InitKingCache();
      static void InitKnightCache();
      static void InitPawnCache();
+     static void InitLinesBb();
+     static void InitBetweenBb();
 
+     static Bitboard::Bitboard LineBb[64][64];
+     static Bitboard::Bitboard BetweenBb[64][64];
      static Bitboard::Bitboard* RookCache[64];
      static Bitboard::Bitboard* BishopCache[64];
      static Bitboard::Bitboard KingCache[64];
