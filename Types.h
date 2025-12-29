@@ -5,8 +5,9 @@
 #ifndef ENGINE_TYPES_H
 #define ENGINE_TYPES_H
 
-enum class PieceColor{WHITE, BLACK};
+enum PieceColor{WHITE, BLACK};
 
-enum class PieceType{PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING};
+enum PieceType{ PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, NONE};
+
 
 #endif //ENGINE_TYPES_H

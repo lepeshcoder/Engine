@@ -25,3 +25,5 @@ std::string Bitboard::BitboardToString(const Bitboard bb, BitOrder order) {
     }
     return result;
 }
+
+
