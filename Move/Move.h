@@ -33,33 +33,43 @@
             LongCastleFlag = 1 << 3, EnPassantFlag = 1 << 4 };
 
         class Move{
-        private:
+        protected:
             uint32_t move;
             
-
         public:
             Move() = default;
-            Move(uint32_t from, uint32_t to, uint32_t flags,
-                uint32_t movingPieceType, uint32_t capturedPieceType, uint32_t promotionPieceType);
+            Move(uint8_t from, uint8_t to, uint8_t flags,
+                uint8_t movingPieceType, uint8_t capturedPieceType, uint8_t promotionPieceType);
 
             static std::string sq(int sq);
 
-            uint32_t getTo() const { return move & SixBitMask; }
-            uint32_t getFrom() const { return move >> FromSqShift & SixBitMask; }
-            uint32_t getFlags() const { return move >> FlagsShift & FiveBitMask; }
-
-            PieceType getCapturedPieceType() const { return PieceType(move >> CapturedPieceTypeShift & ThreeBitMask); }
-            PieceType getMovingPieceType() const { return PieceType(move >> MovingPieceTypeShift & ThreeBitMask); }
-            PieceType getPromotionPieceType() const { return PieceType(move >> PromotionPieceTypeShift & ThreeBitMask); }
-
-            bool isCapture() const { return getFlags() & CaptureFlag; }
-            bool isPromotion() const { return getFlags() & PromotionFlag; }
-            bool isShortCastle() const { return getFlags() & ShortCastleFlag; }
-            bool isLongCastle() const { return getFlags() & LongCastleFlag; };
-            bool isEnPassant() const { return getFlags() & EnPassantFlag; }
+            inline uint32_t getTo() const { return move & SixBitMask; }
+            inline uint32_t getFrom() const { return move >> FromSqShift & SixBitMask; }
+            inline uint32_t getFlags() const { return move >> FlagsShift & FiveBitMask; }
+            
+            inline uint32_t getCapturedPieceType() const { return move >> CapturedPieceTypeShift & ThreeBitMask; }
+            inline uint32_t getMovingPieceType() const { return move >> MovingPieceTypeShift & ThreeBitMask; }
+            inline uint32_t getPromotionPieceType() const { return move >> PromotionPieceTypeShift & ThreeBitMask; }
+            
+            inline bool isCapture() const { return getFlags() & CaptureFlag; }
+            inline bool isPromotion() const { return getFlags() & PromotionFlag; }
+            inline bool isShortCastle() const { return getFlags() & ShortCastleFlag; }
+            inline bool isLongCastle() const { return getFlags() & LongCastleFlag; };
+            inline bool isEnPassant() const { return getFlags() & EnPassantFlag; }
+            
+            inline uint32_t GetRaw() const { return move; }
 
             void ShowMove() const;
         };
+
+        class ExtMove : public  Move {
+        private:
+            EvalValue score = 0;
+        public:
+            inline EvalValue GetScore() const {return score;}
+            inline void operator=(Move move) { this->move = move.GetRaw(); }
+        };
+        inline bool operator< (const ExtMove& a, const ExtMove& b) { return a.GetScore() < b.GetScore(); }
     }
 
 

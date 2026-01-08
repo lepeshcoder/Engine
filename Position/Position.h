@@ -21,6 +21,7 @@
  constexpr int8_t BK = 4;
  constexpr int8_t BQ = 8;
 
+
  constexpr int8_t castlingMasks[64] = {
     WK,0,0,WK | WQ,0,0,0,WQ,
     0,0,0,0,0,0,0,0,
@@ -34,23 +35,23 @@
 
 struct PositionInfo {
 
-    PositionInfo()
-    {
-        std::memset(this,0,sizeof(PositionInfo));
-    }
+    PositionInfo() = default;
+
     //Field that copied when makemove
-    Bitboard::Bitboard allPiecesByColor[2]; 
-    Bitboard::Bitboard allPieces;
-    int8_t castleRights;  
-    int8_t FiftyMovesCounter;
-    int8_t EnPassantField; 
-   
+    Bitboard::Bitboard allPiecesByColor[2]{Bitboard::ZERO}; 
+    Bitboard::Bitboard allPieces = Bitboard::ZERO;
+    int8_t castleRights = 0;  
+    int8_t FiftyMovesCounter = 0;
+    int8_t EnPassantField = Bitboard::SQ_NONE; 
+    EvalValue Material = 0;                      // material value of position
+    Key key;                                     // zobrist hash value of position  
     // FIELDS THAT DONT COPY WHEN MAKEMOVE BEACUSE RECALCULATED
-    Bitboard::Bitboard CheckSquares[6]; // array of Bitboards that represent from what square [pieceType] can do a check
-    Bitboard::Bitboard Checkers;  // bitboard that represent pieces that gives check in position
-    Bitboard::Bitboard Pinners[2]; // bitboard that represent [color] pieces that pins [~color] pieces
-    Bitboard::Bitboard KingBlockers[2]; // bitboard that represent pieces that are  blocks [color] king from [~color] pinners
-    PositionInfo *next , *previous;
+    
+    Bitboard::Bitboard CheckSquares[6]{Bitboard::ZERO}; // array of Bitboards that represent from what square [pieceType] can do a check
+    Bitboard::Bitboard Checkers = Bitboard::ZERO;  // bitboard that represent pieces that gives check in position
+    Bitboard::Bitboard Pinners[2]{Bitboard::ZERO}; // bitboard that represent [color] pieces that pins [~color] pieces
+    Bitboard::Bitboard KingBlockers[2]{Bitboard::ZERO}; // bitboard that represent pieces that are  blocks [color] king from [~color] pinners
+    PositionInfo *next = nullptr , *previous = nullptr;
 };
 
 
@@ -70,7 +71,7 @@ private:
     // for makeMove
     void MakeShortCastleMove(const Move::Move& move);
     void MakeLongCastleMove(const Move::Move& move);
-    void MakeCastleMove(const Move::Move& move, Bitboard::Bitboard rookBeforeMoveSq, Bitboard::Bitboard rookAfterMoveSq);
+    void MakeCastleMove(const Move::Move& move,uint8_t rookBeforeMoveSq, uint8_t rookAfterMoveSq);
     void MakeCaptureMove(const Move::Move& move);
     void MakeEnPassantMove(const Move::Move& move);
     void MakePromotionMove(const Move::Move& move);
@@ -92,6 +93,9 @@ private:
     void SetBlockersPinners(uint32_t color);
     void SetCheckers();
 
+    //Hash
+    void SetZobrist();
+
     // allPeaces of color that attacks sq
     Bitboard::Bitboard AttackersTo(uint32_t attackerColor, int sq);
 
@@ -99,19 +103,20 @@ private:
     void PushUndoInfo(PositionInfo* pi);
     void PopUndoInfo();
 
+
     #pragma endregion
 
 public:
 
     Position();
-    Position(const std::string &Fen);
+    Position(const std::string &Fen, PositionInfo* pi);
 
     //Operators
     Position& operator=(const Position& other);
     bool operator==(const Position& other) const;
     bool operator!=(const Position& other) const;
   
-    void SetPosition(const std::string& Fen);
+    void SetPosition(const std::string& Fen, PositionInfo* pi);
 
     // MAKE/UNMAKE
     void MakeMove(const Move::Move& move, PositionInfo* pi);
@@ -152,6 +157,9 @@ public:
     Bitboard::Bitboard GetCheckers() const { return info->Checkers; }
 
     Bitboard::Bitboard GetBlockers() const { return info->KingBlockers[CurrentColor]; }
+
+    int32_t GetMaterial() const { return info->Material;}
+
 
 
 

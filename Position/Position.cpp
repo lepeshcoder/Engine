@@ -16,12 +16,12 @@ void Position::MakeShortCastleMove(const Move::Move &move) {
 }
 
 void Position::MakeLongCastleMove(const Move::Move &move) {
-    auto rookBeforeMoveSq = CurrentColor == WHITE ? Bitboard::A1 : Bitboard::A8;
-    auto rookAfterMoveSq = CurrentColor == WHITE ? Bitboard::D1 : Bitboard::D8;
-    MakeCastleMove(move, rookBeforeMoveSq, rookAfterMoveSq);
+    constexpr uint8_t rookBeforeMoveSq[2] = {Bitboard::A1 , Bitboard::A8};
+    constexpr uint8_t rookAfterMoveSq[2] =  {Bitboard::D1 , Bitboard::D8};
+    MakeCastleMove(move, rookBeforeMoveSq[CurrentColor], rookAfterMoveSq[CurrentColor]);
 }
 
-void Position::MakeCastleMove(const Move::Move &move, Bitboard::Bitboard rookBeforeMoveSq, Bitboard::Bitboard rookAfterMoveSq) {
+void Position::MakeCastleMove(const Move::Move &move, uint8_t rookBeforeMoveSq, uint8_t rookAfterMoveSq) {
     auto from = move.getFrom();
     auto to = move.getTo();
     //Update Pieces
@@ -36,21 +36,40 @@ void Position::MakeCastleMove(const Move::Move &move, Bitboard::Bitboard rookBef
     Types[to] = KING;
     Types[rookBeforeMoveSq] = NONE;
     Types[rookAfterMoveSq] = ROOK;
+    
+    //Zobrist update Types
+    info->key ^= Cache::GetZobristTable(CurrentColor, KING, from);
+    info->key ^= Cache::GetZobristTable(CurrentColor, KING, to);
+    info->key ^= Cache::GetZobristTable(CurrentColor, ROOK, rookBeforeMoveSq);
+    info->key ^= Cache::GetZobristTable(CurrentColor, ROOK, rookAfterMoveSq);
 
     //Update king Sq
-    kingsSq[CurrentColor] = to;
+    kingsSq[CurrentColor] = to; 
+    
+
+    // reset Old zobrist castle rights 
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
 
     //Update castleRules
     info->castleRights &= ~castlingMasks[from];
     info->castleRights &= ~castlingMasks[to];
 
+    // set new zobrist castle rights
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
+    
     //UpdateAllPieces
     info->allPiecesByColor[CurrentColor] &= ~(Bitboard::sqBb[from] | Bitboard::sqBb[rookBeforeMoveSq]);
     info->allPiecesByColor[CurrentColor] |=  Bitboard::sqBb[to] | Bitboard::sqBb[rookAfterMoveSq];
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
-    //UpdateEnPassantField
-    info->EnPassantField = 0;
+    // if enPassant field 
+    if (info->EnPassantField != Bitboard::SQ_NONE)
+    {
+        // reset en passant zobrist
+        info->key^=Cache::GetZobristEnPassant(info->EnPassantField % 8);
+        //UpdateEnPassantField
+        info->EnPassantField = Bitboard::SQ_NONE;
+    }
 
     //UpdateCounters
     ++PlyFromNull;
@@ -58,6 +77,9 @@ void Position::MakeCastleMove(const Move::Move &move, Bitboard::Bitboard rookBef
 
     //Change CurrentColor
     CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+
+    //Update zobrist curColor
+    info->key ^= Cache::GetWhiteZobristSideMove();
 }
 
 void Position::MakeCaptureMove(const Move::Move &move) {
@@ -76,14 +98,25 @@ void Position::MakeCaptureMove(const Move::Move &move) {
     Types[from] = NONE;
     Types[to] = movingPieceType;
 
+    //Zobrist update Types
+    info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, from);
+    info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, to);
+    info->key ^= Cache::GetZobristTable(opColor, capturedPieceType, to);
+
     //Update king Sq
     if (movingPieceType == KING) {
         kingsSq[CurrentColor] = to;
     }
 
+    // reset Old zobrist castle rights 
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
+
     //Update castle rules
     info->castleRights &= ~castlingMasks[from];
     info->castleRights &= ~castlingMasks[to];
+
+    // set new zobrist castle rights
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
 
     //UpdateAllPieces
     info->allPiecesByColor[CurrentColor] &= ~Bitboard::sqBb[from];
@@ -91,15 +124,30 @@ void Position::MakeCaptureMove(const Move::Move &move) {
     info->allPiecesByColor[opColor] &= ~Bitboard::sqBb[to];
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
-    //UpdateEnPassantField
-    info->EnPassantField = 0;
+
+    // if enPassant field 
+    if (info->EnPassantField != Bitboard::SQ_NONE)
+    {
+        // reset en passant zobrist
+        info->key ^= Cache::GetZobristEnPassant(info->EnPassantField % 8);
+        //UpdateEnPassantField
+        info->EnPassantField = Bitboard::SQ_NONE;
+    }
+
+
+    //Update Material 
+    info->Material += PiecesMaterial[CurrentColor][capturedPieceType];
 
     //UpdateCounters
     ++PlyFromNull;
     info->FiftyMovesCounter = 0;
 
+
     // Change Color
     CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+
+    //Update zobrist curColor
+    info->key ^= Cache::GetWhiteZobristSideMove();
 }
 
 void Position::MakeEnPassantMove(const Move::Move &move) {
@@ -118,6 +166,11 @@ void Position::MakeEnPassantMove(const Move::Move &move) {
     Types[to] = PAWN;
     Types[capSq] = NONE;
 
+    //Zobrist update Types
+    info->key ^= Cache::GetZobristTable(CurrentColor, PAWN, from);
+    info->key ^= Cache::GetZobristTable(CurrentColor, PAWN, to);
+    info->key ^= Cache::GetZobristTable(opColor, PAWN, capSq);
+
     // No need to Update Castle rights and kingSq
 
     //UpdateAllPieces
@@ -126,8 +179,14 @@ void Position::MakeEnPassantMove(const Move::Move &move) {
     info->allPiecesByColor[opColor] &= ~Bitboard::sqBb[capSq];
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
+    //reset zobrist enpassant
+    info->key ^= Cache::GetZobristEnPassant(to % 8);
+
     //UpdateEnPassantField
-    info->EnPassantField = 0;
+    info->EnPassantField = Bitboard::SQ_NONE;
+
+    //update material
+    info->Material += PiecesMaterial[CurrentColor][PAWN];
 
     //UpdateCounters
     ++PlyFromNull;
@@ -135,6 +194,9 @@ void Position::MakeEnPassantMove(const Move::Move &move) {
 
     // Change Color
     CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+
+    //Update zobrist curColor
+    info->key ^= Cache::GetWhiteZobristSideMove();
 }
 
 void Position::MakePromotionMove(const Move::Move &move) {
@@ -150,6 +212,10 @@ void Position::MakePromotionMove(const Move::Move &move) {
     Types[from] = NONE;
     Types[to] = promotedPieceType;
 
+    //Zobrist update Types
+    info->key ^= Cache::GetZobristTable(CurrentColor, PAWN, from);
+    info->key ^= Cache::GetZobristTable(CurrentColor, promotedPieceType, to);
+
     // No need to Update Castle rights and kingSq
 
     //UpdateAllPieces
@@ -157,15 +223,28 @@ void Position::MakePromotionMove(const Move::Move &move) {
     info->allPiecesByColor[CurrentColor] |= Bitboard::sqBb[to];
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
-    //UpdateEnPassantField
-    info->EnPassantField = 0;
+    // if enPassant field 
+    if (info->EnPassantField != Bitboard::SQ_NONE)
+    {
+        // reset en passant zobrist
+        info->key ^= Cache::GetZobristEnPassant(info->EnPassantField % 8);
+        // UpdateEnPassantField
+        info->EnPassantField = Bitboard::SQ_NONE;
+    }
+    
 
     //UpdateCounters
     ++PlyFromNull;
     info->FiftyMovesCounter = 0;
 
+    //update material
+    info->Material += (PiecesMaterial[CurrentColor][promotedPieceType] - PiecesMaterial[CurrentColor][PAWN]);
+
     // Change Color
     CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+
+    //Update zobrist curColor
+    info->key ^= Cache::GetWhiteZobristSideMove();
 }
 
 void Position::MakeCapturePromotionMove(const Move::Move &move) {
@@ -184,8 +263,19 @@ void Position::MakeCapturePromotionMove(const Move::Move &move) {
     Types[from] = NONE;
     Types[to] = promotedPieceType;
 
+    //Zobrist update Types
+    info->key ^= Cache::GetZobristTable(CurrentColor, PAWN, from);
+    info->key ^= Cache::GetZobristTable(CurrentColor, promotedPieceType, to);
+    info->key ^= Cache::GetZobristTable(opColor, capturedPieceType, to);
+
+    // reset Old zobrist castle rights 
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
+
     //Update castle rules (pawn can only capture op rook)
     info->castleRights &= ~castlingMasks[to];
+
+    // set new zobrist castle rights 
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
 
     //UpdateAllPieces
     info->allPiecesByColor[CurrentColor] &= ~Bitboard::sqBb[from];
@@ -193,8 +283,17 @@ void Position::MakeCapturePromotionMove(const Move::Move &move) {
     info->allPiecesByColor[opColor] &= ~Bitboard::sqBb[to];
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
-    //UpdateEnPassantField
-    info->EnPassantField = 0;
+    // if enPassant field 
+    if (info->EnPassantField != Bitboard::SQ_NONE)
+    {
+        // reset en passant zobrist
+        info->key ^= Cache::GetZobristEnPassant(info->EnPassantField % 8);
+        //UpdateEnPassantField
+        info->EnPassantField = Bitboard::SQ_NONE;
+    }
+
+    //update material
+    info->Material += (PiecesMaterial[CurrentColor][promotedPieceType] + PiecesMaterial[CurrentColor][capturedPieceType] - PiecesMaterial[CurrentColor][PAWN]);
 
     //UpdateCounters
     ++PlyFromNull;
@@ -202,12 +301,16 @@ void Position::MakeCapturePromotionMove(const Move::Move &move) {
 
     // Change Color
     CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+
+    //Update zobrist curColor
+    info->key ^= Cache::GetWhiteZobristSideMove();
 }
 
 void Position::MakeQuietMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
     auto movingPieceType = move.getMovingPieceType();
+    auto opColor = CurrentColor ^ 1;
 
     //Update Pieces
     Pieces[CurrentColor][movingPieceType] &= ~Bitboard::sqBb[from];
@@ -217,12 +320,22 @@ void Position::MakeQuietMove(const Move::Move &move) {
     Types[from] = NONE;
     Types[to] = movingPieceType;
 
+    //Zobrist update Types
+    info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, from);
+    info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, to);
+
     //Update king sq
     if (movingPieceType == KING)
         kingsSq[CurrentColor] = to;
 
+    // reset Old zobrist castle rights 
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
+    
     //Update castle rules(can only move king or rook)
     info->castleRights &= ~castlingMasks[from];
+
+    // set new zobrist castle rights 
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
 
     //UpdateAllPieces
     info->allPiecesByColor[CurrentColor] &= ~Bitboard::sqBb[from];
@@ -230,9 +343,22 @@ void Position::MakeQuietMove(const Move::Move &move) {
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
     //UpdateEnPassantField
-    if (movingPieceType == PAWN && std::abs((int)from - (int)to) == 16)            // if pawn double push
-        info->EnPassantField = CurrentColor == WHITE ? to - 8 : to + 8;                     // set EnPassantField
-    else info->EnPassantField = 0;                                                          // else reset field
+    if (info->EnPassantField != Bitboard::SQ_NONE) {
+        info->key ^= Cache::GetZobristEnPassant(info->EnPassantField % 8);
+        info->EnPassantField = Bitboard::SQ_NONE;
+    }
+    if (movingPieceType == PAWN)
+    {
+        if (std::abs((int)from - (int)to) == 16)  // if pawn double push
+        {
+            uint8_t potentialEpSq = CurrentColor == WHITE ? to - 8 : to + 8;
+            if(NonSlidingPieces::GetPawnAttacks(Pieces[opColor][PAWN],(PieceColor)opColor) & Bitboard::sqBb[potentialEpSq]) // IF en passant really possible
+            { 
+                info->EnPassantField = potentialEpSq;
+                info->key ^= Cache::GetZobristEnPassant(potentialEpSq % 8);
+            }
+        }
+    }
 
     //UpdateCounters
     ++PlyFromNull;
@@ -241,6 +367,9 @@ void Position::MakeQuietMove(const Move::Move &move) {
 
     // Change Color
     CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+
+    //Update zobrist curColor
+    info->key ^= Cache::GetWhiteZobristSideMove();
 }
 
 void Position::UnMakeShortCastleMove(const Move::Move &move) {
@@ -449,6 +578,20 @@ void Position::SetCheckers()
     info->Checkers = AttackersTo(CurrentColor ^ 1, kingsSq[CurrentColor]);
 }
 
+void Position::SetZobrist()
+{
+    for (int sq = 0; sq < 64; sq++)
+    {
+        auto type = Types[sq];
+        auto color = Bitboard::sqBb[sq] & info->allPiecesByColor[WHITE] ? WHITE : BLACK;
+        info->key ^= Cache::GetZobristTable(color,type,sq);
+    }
+    info->key ^= Cache::GetZobristCastleRights(info->castleRights);
+    if (CurrentColor == WHITE) info->key ^= Cache::GetWhiteZobristSideMove();
+    if(info->EnPassantField)
+        info->key ^= Cache::GetZobristEnPassant(info->EnPassantField % 8);
+}
+
 Bitboard::Bitboard Position::AttackersTo(uint32_t attackerColor, int sq)
 {
     auto opColor = attackerColor ^ 1;
@@ -489,31 +632,20 @@ Position::Position()
     kingsSq[BLACK] = 0;
 
     // Создаём базовый PositionInfo (корень undo-стека)
-    info = new PositionInfo();
-
-    // Явная инициализация важных полей
-    info->allPieces = Bitboard::ZERO;
-    info->allPiecesByColor[WHITE] = Bitboard::ZERO;
-    info->allPiecesByColor[BLACK] = Bitboard::ZERO;
-
-    info->castleRights = 0;
-    info->FiftyMovesCounter = 0;
-    info->EnPassantField = -1;
-
-    info->previous = nullptr;
-    info->next = nullptr;
+    info = nullptr; 
 }
 
-Position::Position(const std::string &Fen) 
+Position::Position(const std::string &Fen, PositionInfo* pi)
 {
-    SetPosition(Fen);
+    SetPosition(Fen,pi);
     SetCheckSquares();
     SetBlockersPinners(WHITE);
     SetBlockersPinners(BLACK);
     SetCheckers();
+    SetZobrist();
 }
 
-Position& Position::operator=(const Position& other)
+Position& Position::operator=(const Position& other) 
 {
     if (this == &other)
         return *this;
@@ -582,8 +714,9 @@ bool Position::operator!=(const Position& other) const
     return !(*this == other);
 }
 
-void Position::SetPosition(const std::string& Fen)
+void Position::SetPosition(const std::string& Fen, PositionInfo* pi)
 {
+    info = pi;
     std::istringstream iss(Fen);
     std::string piecePart;
     iss >> piecePart;
@@ -609,6 +742,7 @@ void Position::SetPosition(const std::string& Fen)
             }
             Pieces[color][type] |= Bitboard::ONE << currPos;
             info->allPiecesByColor[color] |= Pieces[color][type];
+            info->Material += PiecesMaterial[color][type];
             Types[currPos] = type;
             --currPos;
         }
@@ -635,11 +769,10 @@ void Position::SetPosition(const std::string& Fen)
     // enPassant
     std::string enPassant;
     iss >> enPassant;
-    if (enPassant == "-") info->EnPassantField = 0;
+    if (enPassant == "-") info->EnPassantField = Bitboard::SQ_NONE;
     else {
         uint8_t file = 'h' - enPassant[0]; // h=0, g=1, ..., a=7
         uint8_t rank = enPassant[1] - '1'; // rank 1-8 → 0-7
-
         info->EnPassantField = rank * 8 + file;
     }
 
@@ -651,6 +784,7 @@ void Position::SetPosition(const std::string& Fen)
     SetBlockersPinners(WHITE);
     SetBlockersPinners(BLACK);
     SetCheckers();
+    SetZobrist();
 }
 
 void Position::MakeMove(const Move::Move &move, PositionInfo* pi) {

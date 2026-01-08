@@ -70,7 +70,7 @@ namespace Bitboard {
         H5,G5,F5,E5,D5,C5,B5,A5,
         H6,G6,F6,E6,D6,C6,B6,A6,
         H7,G7,F7,E7,D7,C7,B7,A7,
-        H8,G8,F8,E8,D8,C8,B8,A8
+        H8,G8,F8,E8,D8,C8,B8,A8,SQ_NONE
     };
 
     constexpr Bitboard sqBb[64] = {

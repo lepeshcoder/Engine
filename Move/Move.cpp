@@ -14,8 +14,8 @@ std::string Move::Move::sq(int sq) {
     return cols[sq % 8] + rows[sq / 8];
 }
 
-Move::Move::Move(uint32_t from, uint32_t to, uint32_t flags, uint32_t movingPieceType, uint32_t capturedPieceType,
-                 uint32_t promotionPieceType) {
+Move::Move::Move(uint8_t from, uint8_t to, uint8_t flags, uint8_t movingPieceType, uint8_t capturedPieceType,
+    uint8_t promotionPieceType) {
     move = from << FromSqShift | to << ToSqShift | flags << FlagsShift |
         movingPieceType  << MovingPieceTypeShift |
             capturedPieceType  << CapturedPieceTypeShift |

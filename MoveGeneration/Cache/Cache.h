@@ -8,6 +8,9 @@
 #include"../../Rays/Rays.h"
 #include<immintrin.h>
 #include"../SlidingPieces/SlidingPieces.h"
+#include <iostream>
+#include "../NonSlidingPieces/NonSlidingPieces.h"
+#include <random>
 
 
 class Cache {
@@ -30,10 +33,17 @@ public:
     static Bitboard::Bitboard GetBetweenBb(int from,int to);
     static Bitboard::Bitboard GetPieceMoves(uint32_t pieceType,uint32_t sq, Bitboard::Bitboard blockers);
 
+    static Key GetZobristTable(uint8_t color, uint8_t pieceType, uint8_t sq);
+    static Key GetWhiteZobristSideMove();
+    static Key GetZobristEnPassant(uint8_t enPassantFile);
+    static Key GetZobristCastleRights(uint8_t castleRights);
+
     
 
 
 private:
+    
+     static constexpr uint64_t ZobristSeed = 0x123456789ABCDEFull;
 
      static void InitMasks();
 
@@ -44,9 +54,16 @@ private:
      static void InitPawnCache();
      static void InitLinesBb();
      static void InitBetweenBb();
+     static void InitZobrist();
 
+     static Key ZobristTable[2][6][64];
+     static Key ZobristCastleRights[16];
+     static Key ZobristEnPassant[8];
+     static Key ZobristWhiteSideToMove;
+     
      static Bitboard::Bitboard LineBb[64][64];
      static Bitboard::Bitboard BetweenBb[64][64];
+     
      static Bitboard::Bitboard* RookCache[64];
      static Bitboard::Bitboard* BishopCache[64];
      static Bitboard::Bitboard KingCache[64];

@@ -4,9 +4,7 @@
 
 #include "Cache.h"
 
-#include <iostream>
 
-#include "../NonSlidingPieces/NonSlidingPieces.h"
 
  Bitboard::Bitboard* Cache::RookCache[64];
  Bitboard::Bitboard* Cache::BishopCache[64];
@@ -23,6 +21,11 @@
 
  Bitboard::Bitboard Cache::LineBb[64][64]{Bitboard::ZERO};
  Bitboard::Bitboard Cache::BetweenBb[64][64]{Bitboard::ZERO};
+
+ Key Cache::ZobristTable[2][6][64];
+ Key Cache::ZobristCastleRights[16];
+ Key Cache::ZobristEnPassant[8];
+ Key Cache::ZobristWhiteSideToMove;
 
 int Cache::RookBits[64] = {
     12,11,11,11,11,11,11,12,
@@ -55,6 +58,7 @@ void Cache::InitCache() {
     InitPawnCache();
     InitLinesBb();
     InitBetweenBb();
+    InitZobrist();
 }
 
 void Cache::ClearCache() {
@@ -207,6 +211,34 @@ void Cache::InitBetweenBb()
     }
 }
 
+void Cache::InitZobrist()
+{
+    std::mt19937_64 rng(ZobristSeed);
+    std::uniform_int_distribution<uint64_t> dist;
+    ZobristWhiteSideToMove = dist(rng);
+    for (int color = WHITE; color <= BLACK; color++)
+    {
+        for (int pieceType = PAWN; pieceType <= KING; pieceType++)
+        {
+            for (int sq = 0; sq < 64; sq++)
+            {
+                ZobristTable[color][pieceType][sq] = dist(rng);
+            }
+        }
+    }
+
+    for (int castleRigths = 0; castleRigths < 16; castleRigths++)
+    {
+        ZobristCastleRights[castleRigths] = dist(rng);
+    }
+
+    for (int file = 0; file < 8; file++)
+    {
+        ZobristEnPassant[file] = dist(rng);
+    }
+
+}
+
 
 
 Bitboard::Bitboard Cache::GetBishopMoves(int sq, Bitboard::Bitboard blockers) {
@@ -268,5 +300,25 @@ Bitboard::Bitboard Cache::GetPieceMoves(uint32_t pieceType, uint32_t sq, Bitboar
         case BISHOP: return GetBishopMoves(sq,blockers);
         case KNIGHT: return GetKnightMoves(sq);
     }
+}
+
+Key Cache::GetZobristTable(uint8_t color, uint8_t pieceType, uint8_t sq)
+{
+    return ZobristTable[color][pieceType][sq];
+}
+
+Key Cache::GetWhiteZobristSideMove()
+{
+    return ZobristWhiteSideToMove;
+}
+
+Key Cache::GetZobristEnPassant(uint8_t enPassantFile)
+{
+    return ZobristEnPassant[enPassantFile];
+}
+
+Key Cache::GetZobristCastleRights(uint8_t castleRights)
+{
+    return ZobristCastleRights[castleRights];
 }
 
