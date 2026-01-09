@@ -51,6 +51,7 @@ struct PositionInfo {
     Bitboard::Bitboard Checkers = Bitboard::ZERO;  // bitboard that represent pieces that gives check in position
     Bitboard::Bitboard Pinners[2]{Bitboard::ZERO}; // bitboard that represent [color] pieces that pins [~color] pieces
     Bitboard::Bitboard KingBlockers[2]{Bitboard::ZERO}; // bitboard that represent pieces that are  blocks [color] king from [~color] pinners
+    PieceType CapturedPiece = NONE;
     PositionInfo *next = nullptr , *previous = nullptr;
 };
 
@@ -63,7 +64,6 @@ private:
     int8_t Types[64]{ NONE }; // stores info about what piece type on this square
     PieceColor CurrentColor = WHITE;  
     int PlyFromNull = 0;
-    int8_t kingsSq[2]{ 0 };
 
     PositionInfo* info;
 
@@ -144,6 +144,8 @@ public:
 
     Bitboard::Bitboard GetAllPieces() const { return info->allPieces;}
 
+    inline constexpr PieceType GetCapturedPiece() const noexcept { return info->CapturedPiece; }
+
     uint8_t GetPieceTypeBySquare(int sq) const { return Types[sq]; };
 
     uint8_t GetEnPassantField()const { return this->info->EnPassantField; }
@@ -152,7 +154,7 @@ public:
 
     bool IsLongCastleAvailable(int color) const {return color == WHITE ? info->castleRights & WQ : info->castleRights & BQ;}
 
-    uint8_t GetKingSq(int color) const {return kingsSq[color];}
+    uint8_t GetKingSq(int color) const { return Bitboard::BitScanForward(Pieces[color][KING]); }
 
     Bitboard::Bitboard GetCheckers() const { return info->Checkers; }
 
@@ -169,8 +171,10 @@ public:
 
 
     //Constants
-    static constexpr int8_t ShortCastleFieldsByColor[2][3] = {{Bitboard::E1,Bitboard::F1,Bitboard::G1},{Bitboard::E8,Bitboard::F8,Bitboard::G8}};
-    static constexpr int8_t LongCastleFieldsByColor[2][3] = {{Bitboard::E1,Bitboard::D1,Bitboard::C1},{Bitboard::E8,Bitboard::D8,Bitboard::C8}};
+    static constexpr int8_t ShortCastleFieldsByColor[2][3] = {{E1,F1,G1},{E8,F8,G8}};
+    static constexpr int8_t LongCastleFieldsByColor[2][3] = {{E1,D1,C1},{E8,D8,C8}};
+    static constexpr int8_t KingSqAfterShortCastleByColor[2] = {G1,G8};
+    static constexpr int8_t KingSqAfterLongCastleByColor[2] = {C1,C8};
 };
 
 

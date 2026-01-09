@@ -25,6 +25,10 @@ add_executable(Engine main.cpp
         MoveGeneration/Generators/LegalGenerator/LegalGenerator.h
         Utils/Perft/Perft.cpp
         Utils/Perft/Perft.h
+        build/Search.h
+        build/Search.cpp
+        Evaluation/Evaluation.h
+        Evaluation/Evaluation.cpp
 )
 
 target_compile_options(Engine PRIVATE -mbmi2)

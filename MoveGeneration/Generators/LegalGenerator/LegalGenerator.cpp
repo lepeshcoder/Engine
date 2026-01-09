@@ -62,14 +62,14 @@ void LegalGenerator::GenerateCastles(const Position& pos, MoveList& moveList)
 
     auto allPieces = pos.GetAllPieces();
     auto curColor = pos.GetCurrentColor();   
-    auto kingSq = pos.GetKingSq(curColor);
+    auto kingSq = Square(pos.GetKingSq(curColor));
 
     //short castle
     auto isShortCastleAvailable = pos.IsShortCastleAvailable(curColor) &&                      // if king and rook doesnt move
                                   !(shortCastleBlockersByColor[curColor] & allPieces);         // if no pieces beetween king and rook
 
     if (isShortCastleAvailable) {
-        moveList.Push({ kingSq, (uint8_t)(kingSq - 2), Move::ShortCastleFlag, KING, NONE, NONE });
+        moveList.Push(Move::Move::MakeCastle(kingSq, Square(kingSq - 2)));
     }
 
     // long castle
@@ -77,7 +77,7 @@ void LegalGenerator::GenerateCastles(const Position& pos, MoveList& moveList)
                                  !(longCastleBlockersByColor[curColor] & allPieces);
 
     if (isLongCastleAvailable) {
-        moveList.Push({ kingSq, (uint8_t)(kingSq + 2), Move::LongCastleFlag, KING, NONE, NONE });
+        moveList.Push(Move::Move::MakeCastle(kingSq,Square(kingSq + 2)));
     }
 }
 
@@ -87,23 +87,23 @@ void LegalGenerator::GeneratePawnMoves(const Position& pos, MoveList& moveList, 
     auto pawns = pos.GetPieceBitboard(curColor, PAWN);
     auto blockers = pos.GetAllPieces();
     auto enemies = pos.GetPiecesByColor(curColor ^ 1);
-    auto enPassantField = pos.GetEnPassantField();
+    auto enPassantField = Square(pos.GetEnPassantField());
    
     while (pawns) {
-        auto pawnSq = Bitboard::BitScanForward(pawns);
+        auto pawnSq = Square(Bitboard::BitScanForward(pawns));
         auto pawnMoves = Cache::GetPawnMoves(curColor, pawnSq, blockers) & target;
         // MOVES
         while (pawnMoves) {
-            auto to = Bitboard::BitScanForward(pawnMoves);
+            auto to = Square(Bitboard::BitScanForward(pawnMoves));
             bool isPromotion = to >> 3 == (curColor ? 0 : 7);
             if (isPromotion) {
-                moveList.Push({ pawnSq, to, Move::PromotionFlag, PAWN, NONE, QUEEN });
-                moveList.Push({ pawnSq, to, Move::PromotionFlag, PAWN, NONE, ROOK });
-                moveList.Push({ pawnSq, to, Move::PromotionFlag, PAWN, NONE, BISHOP });
-                moveList.Push({ pawnSq, to, Move::PromotionFlag, PAWN, NONE, KNIGHT });
+                moveList.Push(Move::Move::MakePromotion(pawnSq,to,QUEEN));
+                moveList.Push(Move::Move::MakePromotion(pawnSq,to,ROOK));
+                moveList.Push(Move::Move::MakePromotion(pawnSq,to,BISHOP));
+                moveList.Push(Move::Move::MakePromotion(pawnSq,to,KNIGHT));
             }
             else {
-                moveList.Push({ pawnSq, to, 0, PAWN, NONE, NONE });
+                moveList.Push(Move::Move::MakeMove(pawnSq,to));
             }
             pawnMoves &= pawnMoves - 1;
         }
@@ -112,17 +112,17 @@ void LegalGenerator::GeneratePawnMoves(const Position& pos, MoveList& moveList, 
         auto pawnAttacksRaw = Cache::GetPawnAttacks(curColor, pawnSq);
         auto pawnAttacks = pawnAttacksRaw & enemies & target;
         while (pawnAttacks) {
-            auto to = Bitboard::BitScanForward(pawnAttacks);
-            auto capturedPieceType = pos.GetPieceTypeBySquare(to);
+            auto to = Square(Bitboard::BitScanForward(pawnAttacks));
             bool isPromotion = to >> 3 == (curColor ? 0 : 7);
             if (isPromotion) {
-                moveList.Push({ pawnSq, to, Move::PromotionFlag | Move::CaptureFlag, PAWN, capturedPieceType, QUEEN });
-                moveList.Push({ pawnSq, to, Move::PromotionFlag | Move::CaptureFlag, PAWN, capturedPieceType, ROOK });
-                moveList.Push({ pawnSq, to, Move::PromotionFlag | Move::CaptureFlag, PAWN, capturedPieceType, BISHOP });
-                moveList.Push({ pawnSq, to, Move::PromotionFlag | Move::CaptureFlag, PAWN, capturedPieceType, KNIGHT });
+
+                moveList.Push(Move::Move::MakePromotion(pawnSq, to, QUEEN));
+                moveList.Push(Move::Move::MakePromotion(pawnSq, to, ROOK));
+                moveList.Push(Move::Move::MakePromotion(pawnSq, to, BISHOP));
+                moveList.Push(Move::Move::MakePromotion(pawnSq, to, KNIGHT));
             }
             else {
-                moveList.Push({ pawnSq, to, Move::CaptureFlag, PAWN, capturedPieceType, NONE });
+                moveList.Push(Move::Move::MakeMove(pawnSq,to));
             }
             pawnAttacks &= pawnAttacks - 1;
         }
@@ -147,8 +147,7 @@ void LegalGenerator::GeneratePawnMoves(const Position& pos, MoveList& moveList, 
             auto enPassantBb = Bitboard::sqBb[enPassantField];
             bool isEnPassant = pawnAttacksRaw & enPassantBb & newTarget;
             if (isEnPassant) {
-                moveList.Push({ pawnSq, enPassantField, Move::CaptureFlag | Move::EnPassantFlag,
-                    PAWN, PAWN, NONE });
+                moveList.Push(Move::Move::MakeEnPassant( pawnSq, enPassantField));
             }
         }
         pawns &= pawns - 1;
@@ -164,18 +163,12 @@ void LegalGenerator::GeneratePieceMove(const Position& pos, MoveList& moveList, 
     auto enemies = pos.GetPiecesByColor(opColor);
     auto pieces = pos.GetPieceBitboard(curColor,pieceType);
     while (pieces) {
-        auto pieceSq = Bitboard::BitScanForward(pieces);
+        auto pieceSq = Square(Bitboard::BitScanForward(pieces));
         auto pieceMoves = Cache::GetPieceMoves(pieceType,pieceSq, blockers) & ~friends & target;
         while (pieceMoves)
         {
-            auto to = Bitboard::BitScanForward(pieceMoves);
-            auto isCapture = Bitboard::sqBb[to] & enemies;
-            if (isCapture){
-                moveList.Push({pieceSq,to,Move::CaptureFlag,pieceType,pos.GetPieceTypeBySquare(to),NONE});
-            }
-            else {
-                moveList.Push({pieceSq,to,0,pieceType,NONE,NONE});
-            }
+            auto to = Square(Bitboard::BitScanForward(pieceMoves));
+            moveList.Push(Move::Move::MakeMove(pieceSq,to));
             pieceMoves &= pieceMoves - 1;
         }
         pieces &= pieces - 1;
@@ -185,7 +178,7 @@ void LegalGenerator::GeneratePieceMove(const Position& pos, MoveList& moveList, 
 void LegalGenerator::GenerateEvasions(const Position& pos, MoveList& moveList)
 {
     auto curColor = pos.GetCurrentColor();
-    auto kingSq = pos.GetKingSq(curColor);
+    auto kingSq = Square(pos.GetKingSq(curColor));
     auto opColor = curColor ^ 1;
     auto enemies = pos.GetPiecesByColor(opColor);
     auto friends = pos.GetPiecesByColor(curColor);
@@ -197,14 +190,8 @@ void LegalGenerator::GenerateEvasions(const Position& pos, MoveList& moveList)
         auto kingMoves = Cache::GetKingMoves(kingSq) & ~friends;
         while (kingMoves)
         {
-            auto to = Bitboard::BitScanForward(kingMoves);
-            auto isCapture = Bitboard::sqBb[to] & enemies;
-            if(isCapture){ 
-                moveList.Push({kingSq,to,Move::CaptureFlag,KING,pos.GetPieceTypeBySquare(to),NONE});
-            }
-            else {
-                moveList.Push({kingSq, to, 0, KING, NONE, NONE});
-            }
+            auto to = Square(Bitboard::BitScanForward(kingMoves));
+            moveList.Push(Move::Move::MakeMove(kingSq,to));
             kingMoves &= kingMoves - 1;
         }
         return;

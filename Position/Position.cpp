@@ -41,11 +41,7 @@ void Position::MakeCastleMove(const Move::Move &move, uint8_t rookBeforeMoveSq, 
     info->key ^= Cache::GetZobristTable(CurrentColor, KING, from);
     info->key ^= Cache::GetZobristTable(CurrentColor, KING, to);
     info->key ^= Cache::GetZobristTable(CurrentColor, ROOK, rookBeforeMoveSq);
-    info->key ^= Cache::GetZobristTable(CurrentColor, ROOK, rookAfterMoveSq);
-
-    //Update king Sq
-    kingsSq[CurrentColor] = to; 
-    
+    info->key ^= Cache::GetZobristTable(CurrentColor, ROOK, rookAfterMoveSq);    
 
     // reset Old zobrist castle rights 
     info->key ^= Cache::GetZobristCastleRights(info->castleRights);
@@ -76,7 +72,7 @@ void Position::MakeCastleMove(const Move::Move &move, uint8_t rookBeforeMoveSq, 
     ++info->FiftyMovesCounter;
 
     //Change CurrentColor
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update zobrist curColor
     info->key ^= Cache::GetWhiteZobristSideMove();
@@ -85,8 +81,8 @@ void Position::MakeCastleMove(const Move::Move &move, uint8_t rookBeforeMoveSq, 
 void Position::MakeCaptureMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto movingPieceType = move.getMovingPieceType();
-    auto capturedPieceType = move.getCapturedPieceType();
+    auto movingPieceType = Types[from];
+    auto capturedPieceType = Types[to];
     auto opColor = CurrentColor ^ 1;
 
     //Update Pieces
@@ -102,11 +98,6 @@ void Position::MakeCaptureMove(const Move::Move &move) {
     info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, from);
     info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, to);
     info->key ^= Cache::GetZobristTable(opColor, capturedPieceType, to);
-
-    //Update king Sq
-    if (movingPieceType == KING) {
-        kingsSq[CurrentColor] = to;
-    }
 
     // reset Old zobrist castle rights 
     info->key ^= Cache::GetZobristCastleRights(info->castleRights);
@@ -144,7 +135,7 @@ void Position::MakeCaptureMove(const Move::Move &move) {
 
 
     // Change Color
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update zobrist curColor
     info->key ^= Cache::GetWhiteZobristSideMove();
@@ -153,7 +144,7 @@ void Position::MakeCaptureMove(const Move::Move &move) {
 void Position::MakeEnPassantMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto opColor = CurrentColor ^ 1;
+    auto opColor = ~CurrentColor;
     auto capSq = CurrentColor == WHITE ? to - 8 : to + 8;
 
     // Update Pieces
@@ -193,7 +184,7 @@ void Position::MakeEnPassantMove(const Move::Move &move) {
     info->FiftyMovesCounter = 0;
 
     // Change Color
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update zobrist curColor
     info->key ^= Cache::GetWhiteZobristSideMove();
@@ -241,7 +232,7 @@ void Position::MakePromotionMove(const Move::Move &move) {
     info->Material += (PiecesMaterial[CurrentColor][promotedPieceType] - PiecesMaterial[CurrentColor][PAWN]);
 
     // Change Color
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update zobrist curColor
     info->key ^= Cache::GetWhiteZobristSideMove();
@@ -250,9 +241,9 @@ void Position::MakePromotionMove(const Move::Move &move) {
 void Position::MakeCapturePromotionMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto opColor = CurrentColor ^ 1;
+    auto opColor = ~CurrentColor;
     auto promotedPieceType = move.getPromotionPieceType();
-    auto capturedPieceType = move.getCapturedPieceType();
+    auto capturedPieceType = Types[to];
 
     //Update Pieces
     Pieces[CurrentColor][PAWN] &= ~Bitboard::sqBb[from];
@@ -300,7 +291,7 @@ void Position::MakeCapturePromotionMove(const Move::Move &move) {
     info->FiftyMovesCounter = 0;
 
     // Change Color
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update zobrist curColor
     info->key ^= Cache::GetWhiteZobristSideMove();
@@ -309,8 +300,8 @@ void Position::MakeCapturePromotionMove(const Move::Move &move) {
 void Position::MakeQuietMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto movingPieceType = move.getMovingPieceType();
-    auto opColor = CurrentColor ^ 1;
+    auto movingPieceType = Types[from];
+    auto opColor = ~CurrentColor;
 
     //Update Pieces
     Pieces[CurrentColor][movingPieceType] &= ~Bitboard::sqBb[from];
@@ -323,10 +314,6 @@ void Position::MakeQuietMove(const Move::Move &move) {
     //Zobrist update Types
     info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, from);
     info->key ^= Cache::GetZobristTable(CurrentColor, movingPieceType, to);
-
-    //Update king sq
-    if (movingPieceType == KING)
-        kingsSq[CurrentColor] = to;
 
     // reset Old zobrist castle rights 
     info->key ^= Cache::GetZobristCastleRights(info->castleRights);
@@ -366,7 +353,7 @@ void Position::MakeQuietMove(const Move::Move &move) {
     else ++info->FiftyMovesCounter;
 
     // Change Color
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update zobrist curColor
     info->key ^= Cache::GetWhiteZobristSideMove();
@@ -390,7 +377,7 @@ void Position::UnMakeCastleMove(const Move::Move &move, Bitboard::Bitboard rookB
     auto to = move.getTo();
 
     //Update CurrentColor
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update Counter
     --PlyFromNull;
@@ -407,19 +394,17 @@ void Position::UnMakeCastleMove(const Move::Move &move, Bitboard::Bitboard rookB
     Types[rookAfterMoveSq] = NONE;
     Types[rookBeforeMoveSq] = ROOK;
 
-    //Update kingSq
-    kingsSq[CurrentColor] = from;
 }
 
 void Position::UnMakeCaptureMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto movingPieceType = move.getMovingPieceType();
-    auto capturedPieceType = move.getCapturedPieceType();
+    auto movingPieceType = Types[to];
+    auto capturedPieceType = info->CapturedPiece;
     auto opColor = CurrentColor;
 
     //Update CurrentColor
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update Counter
     --PlyFromNull;
@@ -432,11 +417,6 @@ void Position::UnMakeCaptureMove(const Move::Move &move) {
     //Update Types
     Types[to] = capturedPieceType;
     Types[from] = movingPieceType;
-
-    //Update kingSq
-    if (movingPieceType == KING)
-        kingsSq[CurrentColor] = from;
-
 }
 
 void Position::UnMakeEnPassantMove(const Move::Move &move) {
@@ -445,7 +425,7 @@ void Position::UnMakeEnPassantMove(const Move::Move &move) {
     auto opColor = CurrentColor;
 
     //Update CurrentColor
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     auto capSq = CurrentColor == WHITE ? to - 8 : to + 8;
 
@@ -461,9 +441,6 @@ void Position::UnMakeEnPassantMove(const Move::Move &move) {
     Types[to] = NONE;
     Types[from] = PAWN;
     Types[capSq] = PAWN;
-
-    //No need to update kingSq
-
 }
 
 void Position::UnMakePromotionMove(const Move::Move &move) {
@@ -484,9 +461,6 @@ void Position::UnMakePromotionMove(const Move::Move &move) {
     //Update Types
     Types[to] = NONE;
     Types[from] = PAWN;
-
-    //No need to update kingSq
-
 }
 
 void Position::UnMakeCapturePromotionMove(const Move::Move &move) {
@@ -494,10 +468,10 @@ void Position::UnMakeCapturePromotionMove(const Move::Move &move) {
     auto to = move.getTo();
     auto opColor = CurrentColor;
     auto promotionPieceType = move.getPromotionPieceType();
-    auto capturedPieceType = move.getCapturedPieceType();
+    auto capturedPieceType = info->CapturedPiece;
 
     //Update CurrentColor
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update Counter
     --PlyFromNull;
@@ -510,18 +484,15 @@ void Position::UnMakeCapturePromotionMove(const Move::Move &move) {
     //Update Types
     Types[to] = capturedPieceType;
     Types[from] = PAWN;
-
-    //No need to update kingSq
-
 }
 
 void Position::UnMakeQuietMove(const Move::Move &move) {
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto movingPieceType = move.getMovingPieceType();
+    auto movingPieceType = Types[to];
 
     //Update CurrentColor
-    CurrentColor = CurrentColor == WHITE ? BLACK : WHITE;
+    CurrentColor = ~CurrentColor;
 
     //Update Counter
     --PlyFromNull;
@@ -533,16 +504,12 @@ void Position::UnMakeQuietMove(const Move::Move &move) {
     //Update Types
     Types[to] = NONE;
     Types[from] = movingPieceType;
-
-    //Update kingSq
-    if (movingPieceType == KING)
-        kingsSq[CurrentColor] = from;
 }
 
 void Position::SetCheckSquares()
 {
     auto opColor = CurrentColor ^ 1;
-    auto opKingSq = kingsSq[opColor];
+    auto opKingSq = Bitboard::BitScanForward(Pieces[opColor][KING]);
     info->CheckSquares[PAWN] = Cache::GetPawnAttacks(CurrentColor,opKingSq);
     info->CheckSquares[KNIGHT] = Cache::GetKnightMoves(opKingSq);
     info->CheckSquares[BISHOP] = Cache::GetBishopMoves(opKingSq, info->allPieces);
@@ -556,7 +523,7 @@ void Position::SetBlockersPinners(uint32_t color)
     auto opColor = color ^ 1;
     info->KingBlockers[color] = 0;
     info->Pinners[opColor] = 0;
-    auto kingSq = kingsSq[color];
+    auto kingSq = GetKingSq(color);
     auto snipers = Cache::GetBishopMoves(kingSq,Bitboard::ZERO) & (Pieces[opColor][BISHOP] | Pieces[opColor][QUEEN]) |
                    Cache::GetRookMoves(kingSq,Bitboard::ZERO) & (Pieces[opColor][ROOK] | Pieces[opColor][QUEEN]);
     while (snipers) {
@@ -575,7 +542,7 @@ void Position::SetBlockersPinners(uint32_t color)
 
 void Position::SetCheckers()
 {
-    info->Checkers = AttackersTo(CurrentColor ^ 1, kingsSq[CurrentColor]);
+    info->Checkers = AttackersTo(~CurrentColor , GetKingSq(CurrentColor));
 }
 
 void Position::SetZobrist()
@@ -628,9 +595,7 @@ Position::Position()
     CurrentColor = WHITE;
     PlyFromNull = 0;
 
-    kingsSq[WHITE] = 0;
-    kingsSq[BLACK] = 0;
-
+    
     // Создаём базовый PositionInfo (корень undo-стека)
     info = nullptr; 
 }
@@ -657,8 +622,7 @@ Position& Position::operator=(const Position& other)
     // Копируем массивы
     std::memcpy(Pieces, other.Pieces, sizeof(Pieces));
     std::memcpy(Types, other.Types, sizeof(Types));
-    std::memcpy(kingsSq, other.kingsSq, sizeof(kingsSq));
-
+  
     // ВАЖНО: копируем указатель, а не данные
     info = other.info;
 
@@ -687,11 +651,7 @@ bool Position::operator==(const Position& other) const
         if (Types[sq] != other.Types[sq])
             return false;
 
-    // Kings squares
-    if (kingsSq[0] != other.kingsSq[0] ||
-        kingsSq[1] != other.kingsSq[1])
-        return false;
-
+  
     // --- PositionInfo ---
     // сравниваем СОДЕРЖИМОЕ, а не адрес
 
@@ -749,9 +709,6 @@ void Position::SetPosition(const std::string& Fen, PositionInfo* pi)
     }
     info->allPieces = info->allPiecesByColor[WHITE] | info->allPiecesByColor[BLACK];
 
-    kingsSq[WHITE] = Bitboard::BitScanForward(Pieces[WHITE][KING]);
-    kingsSq[BLACK] = Bitboard::BitScanForward(Pieces[BLACK][KING]);
-
     // currColor
     std::string currColor;
     iss >> currColor;
@@ -789,29 +746,18 @@ void Position::SetPosition(const std::string& Fen, PositionInfo* pi)
 
 void Position::MakeMove(const Move::Move &move, PositionInfo* pi) {
     PushUndoInfo(pi);
-    switch (move.getFlags()) {
-        case Move::ShortCastleFlag: {
+    // TODO: FIX INNER FUNCTIONS (SWIPE TO ONLY 4 MOVETYPE)
+    switch (move.GetType()) {
+        case CASTLE: {
             MakeShortCastleMove(move);
             break;
         }
-        case Move::LongCastleFlag: {
-            MakeLongCastleMove(move);
-            break;
-        }
-        case Move::CaptureFlag: {
-            MakeCaptureMove(move);
-            break;
-        }
-        case Move::CaptureFlag | Move::EnPassantFlag: {
+        case EN_PASSANT: {
             MakeEnPassantMove(move);
             break;
         }
-        case Move::PromotionFlag: {
+        case PROMOTION: {
             MakePromotionMove(move);
-            break;
-        }
-        case Move::CaptureFlag | Move::PromotionFlag: {
-            MakeCapturePromotionMove(move);
             break;
         }
         default: {
@@ -826,30 +772,19 @@ void Position::MakeMove(const Move::Move &move, PositionInfo* pi) {
 }
 
 void Position::UnMakeMove(const Move::Move &move) {
+    //TODO: FIX FOR 4 MOVETYPES
     PopUndoInfo();
-    switch (move.getFlags()) {
-        case Move::ShortCastleFlag: {
+    switch (move.GetType()) {
+        case CASTLE: {
             UnMakeShortCastleMove(move);
             break;
         }
-        case Move::LongCastleFlag: {
-            UnMakeLongCastleMove(move);
-            break;
-        }
-        case Move::CaptureFlag: {
-            UnMakeCaptureMove(move);
-            break;
-        }
-        case Move::CaptureFlag | Move::EnPassantFlag: {
+        case EN_PASSANT: {
             UnMakeEnPassantMove(move);
             break;
         }
-        case Move::PromotionFlag: {
+        case PROMOTION: {
             UnMakePromotionMove(move);
-            break;
-        }
-        case Move::CaptureFlag | Move::PromotionFlag: {
-            UnMakeCapturePromotionMove(move);
             break;
         }
         default: {
@@ -877,7 +812,7 @@ bool Position::IsLegal(const Move::Move &move) const {
                  IsSquareUnderAttack(LongCastleFieldsByColor[CurrentColor][2]));
     }
     if (move.isEnPassant()) {
-        auto kingSq = kingsSq[CurrentColor];
+        auto kingSq = GetKingSq(CurrentColor);
         auto to = move.getTo();
         auto from = move.getFrom();
         auto capSq = CurrentColor == WHITE ? to - 8 : to + 8; 
@@ -886,12 +821,12 @@ bool Position::IsLegal(const Move::Move &move) const {
         return !(Cache::GetBishopMoves(kingSq,newBlockers) & (Pieces[opColor][QUEEN] | Pieces[opColor][BISHOP])) &&
                !(Cache::GetRookMoves(kingSq,newBlockers) & (Pieces[opColor][QUEEN] | Pieces[opColor][ROOK]));
     }
-    if (move.getMovingPieceType() == KING) {
+    if (Types[move.getFrom()] == KING) {
         return !IsSquareUnderAttack(move.getTo(), info->allPieces & ~Bitboard::sqBb[move.getFrom()] | Bitboard::sqBb[move.getTo()]);
     }
     bool isBlocker = Bitboard::sqBb[move.getFrom()] & info->KingBlockers[CurrentColor]; 
     if(!isBlocker) return true;
-    return Bitboard::sqBb[kingsSq[CurrentColor]] & Cache::GetLineBb(move.getFrom(),move.getTo());
+    return Bitboard::sqBb[GetKingSq(CurrentColor)] & Cache::GetLineBb(move.getFrom(),move.getTo());
     
 }
 
@@ -934,9 +869,9 @@ bool Position::IsMoveGivesCheck(const Move::Move& move)
     constexpr Bitboard::Bitboard RookBbAfterLongCastleByColor[2] = {Bitboard::sqBb[Bitboard::D1],Bitboard::sqBb[Bitboard::D8]};
     auto from = move.getFrom();
     auto to = move.getTo();
-    auto movingPieceType = move.getMovingPieceType();
-    auto opColor = CurrentColor ^ 1;
-    auto opKingSq = kingsSq[opColor];
+    auto movingPieceType = Types[from];
+    auto opColor = ~CurrentColor;
+    auto opKingSq = GetKingSq(opColor);
 
     // if direct Check
     if(Bitboard::sqBb[to] & info->CheckSquares[movingPieceType]) return true;

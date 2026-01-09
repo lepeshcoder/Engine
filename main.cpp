@@ -10,6 +10,8 @@
 #include "build/MoveList.h"
 
 
+//TODO FIX SOURCES CMAKELISTS
+
 
 int main() {
     
@@ -23,19 +25,15 @@ int main() {
     // MOVE ORDERING
     // HISTORIES (#SKULL)(SKULL)(#SKULL)
 
-    int a = 5;
-    a = a++;
-    std::cout<<a;
     
    Cache::InitCache();
    
-   std::cout<<a;
    MoveList moveList;
 
-   Move::Move move(0,0,0,0,0,0);
-   Move::Move move1(Bitboard::H1,Bitboard::G1,0,1,1,0);
-   Move::Move move2(Bitboard::H1,Bitboard::G2,0,1,1,0);
-   Move::Move move3(Bitboard::H1, Bitboard::G1,0,1,1,0);
+   auto move1 = Move::Move::MakeMove(E1,E2);
+   auto move2 = Move::Move::MakeMove(E1,E3);
+   auto move3 = Move::Move::MakeMove(E1,E4);
+   auto move4 = Move::Move::MakeMove(E1,E5);
    moveList.Push(move1);
    moveList.Push(move2);
    moveList.Push(move3);

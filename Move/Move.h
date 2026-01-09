@@ -10,56 +10,55 @@
     #include "../Types.h"
 
 
-    // Format : | 000000  |        000         |       000       |        000        |      0      |      0       |       0       |      0      |     0     | 000000 | 000000 |
-    // Goal     | unused  | promotionPieceType | movingPieceType | capturedPieceType | IsEnPassant | IsLongCastle | IsShortCastle | IsPromotion | IsCapture | FromSq |  ToSq  |
-    // Size     |  6 bit  |       3 bit        |      3 bit      |       3 bit       |     1bit    |    1 bit     |     1 bit     |    1 bit    |   1 bit   | 6 bit  | 6 bit  |
-    // Offset   | 26 bit  |       23 bit       |     20 bit      |       17 bit      |    16 bit   |    15 bit    |     14 bit    |    13 bit   |   12 bit  | 6 bit  | 0 bit  |
-    // Union                                                                         |                            Flags                                     |
+    // Format : |            00              |        00          | 000000 | 000000 |
+    // Goal     | Special flags for moveType | PromotionPieceType | FromSq |  ToSq  |
+    // Size     |           2 bit            |       2 bit        | 6 bit  | 6 bit  |
     namespace Move {
 
-        constexpr uint32_t ToSqShift = 0;
-        constexpr uint32_t FromSqShift = 6;
-        constexpr uint32_t FlagsShift = 12;
-        constexpr uint32_t CapturedPieceTypeShift = 17;
-        constexpr uint32_t MovingPieceTypeShift = 20;
-        constexpr uint32_t PromotionPieceTypeShift = 23;
+        constexpr uint16_t ToSqShift = 0;
+        constexpr uint16_t FromSqShift = 6;
+        constexpr uint16_t PromotionPieceTypeShift = 12;
+        constexpr uint16_t FlagsShift = 14;
 
-        constexpr uint32_t OneBitMask = 0x1;
-        constexpr uint32_t ThreeBitMask = 0x7;
-        constexpr uint32_t FiveBitMask = 0x1F;
-        constexpr uint32_t SixBitMask = 0x3F;
+        constexpr uint16_t TwoBitMask = 0x3;
+        constexpr uint16_t SixBitMask = 0x3F;
 
-        enum Flags{ CaptureFlag = 1, PromotionFlag = 1 << 1, ShortCastleFlag = 1 << 2,
-            LongCastleFlag = 1 << 3, EnPassantFlag = 1 << 4 };
+        constexpr uint16_t QuietMove = 0;
+        constexpr uint16_t PromotionMove = 0b01 << FlagsShift;
+        constexpr uint16_t EnPassantMove = 0b10 << FlagsShift;
+        constexpr uint16_t CastleMove = 0b11 << FlagsShift;
+        constexpr uint16_t FlagsMask = CastleMove;
 
         class Move{
         protected:
-            uint32_t move;
+            uint16_t move;
             
         public:
             Move() = default;
-            Move(uint8_t from, uint8_t to, uint8_t flags,
-                uint8_t movingPieceType, uint8_t capturedPieceType, uint8_t promotionPieceType);
+            constexpr explicit Move(uint16_t d) : move(d) {}
 
-            static std::string sq(int sq);
+           
+            constexpr Square getTo() const noexcept { return Square(move & SixBitMask); }
+            constexpr Square getFrom() const noexcept { return Square((move >> FromSqShift) & SixBitMask); }
+            constexpr PieceType getPromotionPieceType() const noexcept { return PieceType(((move >> PromotionPieceTypeShift) & TwoBitMask) + KNIGHT); }
+            
+            constexpr MoveType GetType() const noexcept { return MoveType(move >> FlagsShift);}
+            constexpr bool isPromotion() const noexcept { return (move & FlagsMask) == PromotionMove; }
+            constexpr bool isCastle() const noexcept { return (move & FlagsMask) == CastleMove; }
+            constexpr bool isShortCastle() const noexcept { return isCastle() && FileOf(getTo()) == G ; }
+            constexpr bool isLongCastle() const noexcept { return isCastle() && FileOf(getTo()) == C; }
+            constexpr bool isEnPassant() const noexcept { return (move & FlagsMask) == EnPassantMove; }
+            
+            constexpr uint16_t GetRaw() const noexcept { return move; }
 
-            inline uint32_t getTo() const { return move & SixBitMask; }
-            inline uint32_t getFrom() const { return move >> FromSqShift & SixBitMask; }
-            inline uint32_t getFlags() const { return move >> FlagsShift & FiveBitMask; }
-            
-            inline uint32_t getCapturedPieceType() const { return move >> CapturedPieceTypeShift & ThreeBitMask; }
-            inline uint32_t getMovingPieceType() const { return move >> MovingPieceTypeShift & ThreeBitMask; }
-            inline uint32_t getPromotionPieceType() const { return move >> PromotionPieceTypeShift & ThreeBitMask; }
-            
-            inline bool isCapture() const { return getFlags() & CaptureFlag; }
-            inline bool isPromotion() const { return getFlags() & PromotionFlag; }
-            inline bool isShortCastle() const { return getFlags() & ShortCastleFlag; }
-            inline bool isLongCastle() const { return getFlags() & LongCastleFlag; };
-            inline bool isEnPassant() const { return getFlags() & EnPassantFlag; }
-            
-            inline uint32_t GetRaw() const { return move; }
+            static constexpr Move MakeMove(Square from, Square to) noexcept { return Move(to | from << FromSqShift); };
+            static constexpr Move MakePromotion(Square from, Square to, PieceType promotionType) noexcept { return Move(to | from << FromSqShift | ((promotionType - KNIGHT) << PromotionPieceTypeShift) | PromotionMove); };
+            static constexpr Move MakeEnPassant(Square from, Square to) noexcept { return Move(to | from << FromSqShift | EnPassantMove); };
+            static constexpr Move MakeCastle(Square from, Square to) noexcept { return Move(to | from << FromSqShift | CastleMove); };
+
 
             void ShowMove() const;
+            static std::string sq(int sq);
         };
 
         class ExtMove : public  Move {
